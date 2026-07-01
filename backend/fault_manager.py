@@ -9,7 +9,10 @@ def get_machines():
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT MachineID, MachineName, Description
+        SELECT
+            MachineID,
+            MachineName,
+            Description
         FROM Machines
         ORDER BY MachineName
     """)
@@ -29,15 +32,17 @@ def get_faults():
 
     cursor.execute("""
         SELECT
-            F.FaultID,
-            M.MachineName,
-            F.FaultName,
-            F.Description,
-            F.StartTime
-        FROM Faults F
-        INNER JOIN Machines M
-            ON F.MachineID = M.MachineID
-        ORDER BY F.FaultID DESC
+            FaultID,
+            MachineID,
+            MachineName,
+            FaultName,
+            Description,
+            StartTime,
+            EndTime,
+            Duration,
+            Status
+        FROM dbo.vwFaults
+        ORDER BY FaultID DESC
     """)
 
     rows = cursor.fetchall()
@@ -54,13 +59,38 @@ def add_fault(machine_id, fault_name, description):
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT INTO Faults (MachineID, FaultName, Description)
+        INSERT INTO Faults
+        (
+            MachineID,
+            FaultName,
+            Description
+        )
         VALUES (?, ?, ?)
     """, (
         machine_id,
         fault_name,
         description
     ))
+
+    conn.commit()
+    conn.close()
+
+
+# =========================== CLOSE FAULT ===========================
+
+def close_fault(fault_id):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE Faults
+        SET
+            EndTime = GETDATE(),
+            Status = 'Closed'
+        WHERE FaultID = ?
+          AND Status = 'Open'
+    """, (fault_id,))
 
     conn.commit()
     conn.close()
